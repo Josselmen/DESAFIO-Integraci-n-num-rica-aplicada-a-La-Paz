@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Integración numérica · Ejercicios 19–27 · La Paz</title>
+<style>
+:root{--bg:#f3f8fc;--card:#ffffff;--ink:#16263a;--mut:#4a5b6e;--acc:#1565c0;--acc2:#c62828;--line:#c9d6e4;--ok:#dff5e6;--head:#e8f1fb;color-scheme:light}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{padding:28px 20px 12px;max-width:1180px;margin:auto;border-left:6px solid var(--acc);padding-left:16px;margin-left:max(14px,calc((100% - 1180px)/2))}
+h1{font:700 28px/1.2 Georgia,"Times New Roman",serif;margin:0 0 6px}
+h2{font:700 20px/1.3 Georgia,serif;margin:0 0 8px}
+h3{font:600 16px Georgia,serif;margin:18px 0 6px}
+header p{margin:0;color:var(--mut);max-width:70ch}
+nav{max-width:1180px;margin:8px auto;padding:0 20px;display:flex;flex-wrap:wrap;gap:6px}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:6px;cursor:pointer;font:inherit}
+nav button[aria-selected=true]{background:var(--acc);color:#fff;border-color:var(--acc)}
+main{max-width:1180px;margin:auto;padding:8px 20px;display:grid;grid-template-columns:minmax(300px,420px) 1fr;gap:16px}
+@media(max-width:860px){main{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:18px;min-width:0}
+.wide{max-width:1140px;margin:16px auto 0}
+label{display:block;font-weight:600;margin:10px 0 0;font-size:13px}
+input,textarea,select{width:100%;margin-top:4px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:14px ui-monospace,Consolas,monospace}
+input:focus-visible,textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.ctx{color:var(--mut);margin:0 0 6px}.int{margin:0;font-weight:600}
+.note{font-size:13px;color:#7a4b00;background:#fff4d6;border:1px solid #f0d58a;padding:8px 10px;border-radius:6px;margin:10px 0 0}
+.err{background:#fdecea;color:#8e1b1b;border:1px solid var(--acc2);padding:10px;border-radius:6px;font-weight:600}
+.sc{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:700;color:var(--ink);background:var(--head)}
+tr.best td{background:var(--ok);font-weight:700;color:#14532d}
+.na{color:var(--mut);font-style:italic}
+canvas{width:100%;height:240px;display:block;margin-top:8px;border:1px solid var(--line);border-radius:6px}
+button.go{background:var(--acc);color:#fff;border:0;padding:11px 20px;border-radius:6px;font:600 14px inherit;cursor:pointer;margin-top:12px}
+.meta{display:flex;flex-wrap:wrap;gap:14px;color:var(--mut);font-size:13px;margin:6px 0}
+.chk{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}.chk label{margin:0;font-weight:400;display:flex;gap:4px;align-items:center}.chk input{width:auto;margin:0}
+footer{text-align:center;color:var(--mut);font-size:12px;padding:24px}
+</style>
+</head>
+<body>
+<header>
+<h1>Integración numérica aplicada a La Paz</h1>
+<p>Aplicación web (HTML, CSS y JavaScript) para los ejercicios 19 a 27: trapecio compuesto, Simpson 1/3 y Simpson 3/8. Edite los datos con el teclado y los resultados se recalculan al instante.</p>
+</header>
+<nav id="tabs" role="tablist" aria-label="Ejercicios"></nav>
+<main>
+<section class="card" id="form"></section>
+<section class="card" id="out"></section>
+</main>
+<section class="card wide" id="test">
+<h2>Prueba de validación</h2>
+<p class="ctx">f(x) = x² en [0, 2]; valor exacto 8/3 = 2.666667. Comparación con n = 4, 6 y 8.</p>
+<div class="sc" id="testout"></div>
+</section>
+<section class="card wide" id="rep">
+<h2>Informe técnico en PDF</h2>
+<p class="ctx">Se genera con los datos actuales de cada ejercicio. Para respetar el máximo de 2 páginas, marque solo los dos ejercicios asignados.</p>
+<div class="row" style="grid-template-columns:1fr 2fr">
+<label>Grupo<input id="grp" placeholder="Ej.: A"></label>
+<label>Integrantes<input id="mem" placeholder="Nombres separados por coma"></label>
+</div>
+<div class="chk" id="chk"></div>
+<button class="go" id="pdf">Descargar informe PDF</button>
+</section>
+<footer>Métodos Numéricos · Desafío grupal de integración · La Paz, Bolivia. Los escenarios son adaptaciones didácticas, no mediciones reales.</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const $=s=>document.querySelector(s), PI=Math.PI;
+const F=v=>v==null||!isFinite(v)?'—':(Math.abs(v)>=1e6||(v!==0&&Math.abs(v)<1e-4)?v.toExponential(8):v.toFixed(6));
+/* ---------- Evaluador seguro de expresiones ---------- */
+const ID={x:'x',pi:'Math.PI',e:'Math.E',sin:'Math.sin',cos:'Math.cos',tan:'Math.tan',sinh:'Math.sinh',cosh:'Math.cosh',tanh:'Math.tanh',asin:'Math.asin',acos:'Math.acos',atan:'Math.atan',sqrt:'Math.sqrt',exp:'Math.exp',abs:'Math.abs',ln:'Math.log',log:'Math.log10'};
+function mk(expr){
+  expr=String(expr).trim();
+  if(!expr) throw Error('Hay un campo de expresión vacío.');
+  if(!/^[\w\s+\-*\/^().]*$/.test(expr)) throw Error('La expresión «'+expr+'» tiene caracteres no permitidos (use punto decimal).');
+  let bad=null;
+  const js=expr.replace(/\^/g,'**').replace(/(?<![\d.\w])[A-Za-z_]\w*/g,m=>{if(!(m in ID)){bad=m;return m}return ID[m]});
+  if(bad) throw Error('Símbolo desconocido: '+bad);
+  try{return new Function('x','"use strict";return ('+js+')')}catch(e){throw Error('Expresión inválida: '+expr)}
+}
+function num(expr){const v=mk(expr)(0);if(!isFinite(v)) throw Error('«'+expr+'» no es un número válido.');return v}
+/* ---------- Métodos ---------- */
+const M=[
+ {k:'trap',n:'Trapecio compuesto',ok:n=>n>=1,why:''},
+ {k:'s13',n:'Simpson 1/3',ok:n=>n>=2&&n%2==0,why:'requiere n par'},
+ {k:'s38',n:'Simpson 3/8',ok:n=>n>=3&&n%3==0,why:'requiere n múltiplo de 3'},
+ {k:'comb',n:'Simpson 1/3 + 3/8 (combinado)',ok:n=>n>=3&&n%2==1,why:'requiere n impar ≥ 3'},
+ {k:'s13t',n:'Simpson 1/3 + trapecio (último)',ok:n=>n>=3&&n%2==1,why:'requiere n impar ≥ 3'}];
+function weights(k,n,h){
+  const w=Array(n+1).fill(0);
+  const T=(i,j)=>{for(let q=i;q<j;q++){w[q]+=h/2;w[q+1]+=h/2}};
+  const S=(i,j)=>{for(let q=i;q<j;q+=2){w[q]+=h/3;w[q+1]+=4*h/3;w[q+2]+=h/3}};
+  const E=(i,j)=>{for(let q=i;q<j;q+=3){w[q]+=3*h/8;w[q+1]+=9*h/8;w[q+2]+=9*h/8;w[q+3]+=3*h/8}};
+  if(k=='trap')T(0,n);else if(k=='s13')S(0,n);else if(k=='s38')E(0,n);
+  else if(k=='comb'){S(0,n-3);E(n-3,n)}else{S(0,n-1);T(n-1,n)}
+  return w;
+}
+function integrate(ys,n,h,k=1){
+  return M.map(m=>{
+    if(!m.ok(n)) return {m,why:m.why};
+    const w=weights(m.k,n,h);let s=0;for(let i=0;i<=n;i++)s+=w[i]*ys[i];
+    return {m,w,val:s*k};
+  });
+}
+/* ---------- Ejercicios ---------- */
+const radial=(X,Y,f)=>Y.map(f);
+const EX={
+19:{t:'Distancia de un vehículo',mode:'tabla',head:'t (s), v (mi/h)',
+ ctx:'Un vehículo experimental registra su velocidad durante 7 s. Se estima la distancia recorrida integrando v(t).',
+ int:'d = ∫ v(t) dt de 0 a 7 s, dividido entre 3600 para pasar de mi/h·s a mi.',
+ data:'0 0\n1 14\n2 39\n3 69\n4 95\n5 114\n6 129\n7 139',ser:[{l:'Distancia',u:'mi',k:1/3600}],conv:{k:1609.344,u:'m'}},
+20:{t:'Trabajo de una banda elástica',mode:'tabla',head:'x (in), F (lb)',
+ ctx:'Se mide la fuerza al estirar una banda elástica. El trabajo es la integral de F(x).',
+ int:'W = ∫ F(x) dx de 0 a 2.8 in.',
+ data:'0 0\n0.4 0.85\n0.8 1.30\n1.2 1.60\n1.6 1.87\n2.0 2.14\n2.4 2.34\n2.8 2.52',ser:[{l:'Trabajo',u:'lb·in',k:1}],conv:{k:0.112984829,u:'J'}},
+21:{t:'Área de un perfil topográfico',mode:'tabla',head:'x, y',
+ ctx:'Área bajo el perfil de altura entre x = 1 y x = 10, con coordenadas digitalizadas.',
+ int:'A = ∫ y(x) dx de 1 a 10.',
+ data:'1 1.3\n2 3.7\n3 4.6\n4 4.4\n5 2.7\n6 2.5\n7 3.6\n8 5.3\n9 6.0\n10 5.9',ser:[{l:'Área',u:'u²',k:1}],
+ note:'Datos ilustrativos extraídos visualmente; la precisión depende de la digitalización. Con n = 9 pruebe también Simpson 1/3 + trapecio.'},
+22:{t:'Longitud de un cable (catenaria)',mode:'func',vx:'x',unit:'ft',
+ ctx:'Cable con forma y = a·cosh(x/a), a = 24 ft, entre x = −12 y x = 26 ft. Modelo geométrico simplificado, no cálculo de ingeniería.',
+ int:'L = ∫ √(1 + y′²) dx de −12 a 26, con y′ = sinh(x/24).',
+ fx:'sqrt(1+sinh(x/24)^2)',a:'-12',b:'26',n:'8',ref:'24*(sinh(26/24)-sinh(-12/24))',ser:[{l:'Longitud',u:'ft',k:1}]},
+23:{t:'Caudal de una tubería circular',mode:'func',vx:'r',
+ ctx:'Perfil turbulento v(r) = 80(1 − r/R)^(1/7) en una tubería de radio R = 0.25 in.',
+ int:'Q = ∫ 2πr·v(r) dr de 0 a 0.25.',
+ fx:'160*pi*x*abs(1-x/0.25)^(1/7)',a:'0',b:'0.25',n:'8',ref:'49*pi/12',ser:[{l:'Caudal',u:'in³/s',k:1}],
+ note:'La derivada del perfil cerca de la pared hace que la convergencia sea lenta.'},
+24:{t:'Longitud de una cardioide',mode:'func',vx:'t',
+ ctx:'Cardioide x = 2b·cos t − b·cos 2t, y = 2b·sin t − b·sin 2t, con b = 5.',
+ int:'L = ∫ √(x′² + y′²) dt de 0 a 2π (equivale a ∫ 20·sin(t/2) dt = 80).',
+ fx:'sqrt((-10*sin(x)+10*sin(2*x))^2+(10*cos(x)-10*cos(2*x))^2)',a:'0',b:'2*pi',n:'8',ref:'80',ser:[{l:'Longitud',u:'u',k:1}]},
+25:{t:'Energía potencial de un satélite',mode:'func',vx:'y',
+ ctx:'Satélite de 500 kg elevado 800 km con g(y) = g₀R²/(R + y)², g₀ = 9.81 m/s², R = 6 371 000 m.',
+ int:'ΔU = m·∫ g(y) dy de 0 a 800 000 m.',
+ fx:'500*9.81*6371000^2/(6371000+x)^2',a:'0',b:'800000',n:'8',ref:'500*9.81*6371000*800000/(6371000+800000)',ser:[{l:'ΔU',u:'J',k:1}]},
+26:{t:'Superficie de un lago',mode:'tabla',head:'x (mi), w (mi)',
+ ctx:'Área del lago Erie a partir de anchuras medidas cada 20 mi; luego adaptable al Titicaca con datos geográficos adecuados.',
+ int:'A = ∫ w(x) dx de 40 a 260 mi. Referencia: 9 940 mi².',
+ data:'40 0\n60 35\n80 50\n100 60\n120 66\n140 62\n160 56\n180 50\n200 44\n220 38\n240 28\n260 0',ref:'9940',ser:[{l:'Área',u:'mi²',k:1}],
+ note:'Anchuras ILUSTRATIVAS: reemplácelas por la tabla común digitalizada del mapa. Sin una tabla oficial no existe una aproximación única reproducible.'},
+27:{t:'Volumen y superficie de un objeto alargado',mode:'tabla',head:'z (in), d (in)',
+ ctx:'Diámetro d a lo largo del eje z; r = d/2. Se estima el volumen y se compara la fórmula simplificada de superficie con el área real de revolución.',
+ int:'V = π∫ r² dz; S simple = 2π∫ r dz; S real = 2π∫ r·√(1 + r′²) dz (r′ por diferencias finitas).',
+ data:'0 0\n1 2.6\n2 3.2\n3 4.8\n4 5.6\n5 6.0\n6 6.2\n7 6.0\n8 5.6\n9 4.8\n10 3.3\n11 2.6\n12 0',
+ ser:[{l:'Volumen V',u:'in³',k:1,f:(X,Y)=>Y.map(d=>PI*(d/2)**2)},
+      {l:'Superficie simplificada 2π∫r dz',u:'in²',k:1,f:(X,Y)=>Y.map(d=>PI*d)},
+      {l:'Superficie real de revolución',u:'in²',k:1,f:(X,Y)=>{const r=Y.map(d=>d/2),n=r.length-1;
+        return r.map((ri,i)=>{const d=i==0?(r[1]-r[0])/(X[1]-X[0]):i==n?(r[n]-r[n-1])/(X[n]-X[n-1]):(r[i+1]-r[i-1])/(X[i+1]-X[i-1]);return 2*PI*ri*Math.sqrt(1+d*d)})}}],
+ note:'La fórmula S = 2π∫r dz omite la pendiente: no es el área superficial exacta.'}
+};
+const S={};for(const id in EX){const e=EX[id];S[id]={data:e.data,fx:e.fx,a:e.a,b:e.b,n:e.n,ref:e.ref||'',m:'trap',s:0}}
+let cur=19;
+/* ---------- Cálculo ---------- */
+function parseTable(t){
+  const r=[];
+  t.split('\n').forEach((l,i)=>{l=l.trim();if(!l)return;const p=l.split(/[\s,;]+/).filter(Boolean);
+    if(p.length!=2) throw Error('Línea '+(i+1)+': se esperan 2 valores (x y).');
+    if(p.some(v=>isNaN(Number(v)))) throw Error('Línea '+(i+1)+': hay datos no numéricos.');
+    r.push([+p[0],+p[1]])});
+  if(r.length<2) throw Error('Se necesitan al menos 2 puntos.');
+  for(let i=1;i<r.length;i++) if(!(r[i][0]>r[i-1][0])) throw Error('x no es creciente en la fila '+(i+1)+'.');
+  return r;
+}
+function calc(id){
+  const ex=EX[id],st=S[id];let X,Y,n,h,a,b,f=null;
+  if(ex.mode=='tabla'){
+    const r=parseTable(st.data);X=r.map(p=>p[0]);Y=r.map(p=>p[1]);n=X.length-1;a=X[0];b=X[n];h=(b-a)/n;
+    for(let i=1;i<=n;i++) if(Math.abs(X[i]-X[i-1]-h)>1e-9*Math.max(1,Math.abs(h))) throw Error('Espaciamiento no uniforme: entre las filas '+i+' y '+(i+1)+' el paso difiere de h = '+h.toFixed(6)+'.');
+  }else{
+    f=mk(st.fx);a=num(st.a);b=num(st.b);n=Number(st.n);
+    if(!Number.isInteger(n)||n<1||n>5000) throw Error('n debe ser un entero entre 1 y 5000.');
+    if(!(b>a)) throw Error('Se requiere b > a.');
+    h=(b-a)/n;X=Array.from({length:n+1},(_,i)=>a+i*h);Y=X.map(f);
+    if(Y.some(v=>!isFinite(v))) throw Error('f(x) no es finita en algún nodo.');
+  }
+  const ref=st.ref.trim()?num(st.ref):null;
+  const series=ex.ser.map(s=>{const ys=s.f?s.f(X,Y):Y;return {s,ys,res:integrate(ys,n,h,s.k).map(r=>{
+    if(r.val!=null&&ref!=null){r.ea=Math.abs(ref-r.val);r.ep=ref!=0?100*r.ea/Math.abs(ref):null}return r})}});
+  return {X,Y,n,h,a,b,f,ref,series,ex,st};
+}
+/* ---------- Interfaz ---------- */
+function tabs(){
+  $('#tabs').innerHTML=Object.keys(EX).map(i=>`<button role="tab" aria-selected="${i==cur}" data-i="${i}">Ej. ${i}</button>`).join('');
+  $('#tabs').onclick=e=>{const b=e.target.closest('button');if(b){cur=+b.dataset.i;tabs();form();out()}};
+}
+function form(){
+  const ex=EX[cur],st=S[cur];
+  let h=`<h2>Ejercicio ${cur}. ${ex.t}</h2><p class="ctx">${ex.ctx}</p><p class="int">${ex.int}</p>`;
+  if(ex.mode=='tabla') h+=`<label for="data">Datos: ${ex.head}. Una pareja por línea (espacio, coma o tabulador; decimales con punto)</label><textarea id="data" rows="12" spellcheck="false"></textarea>`;
+  else h+=`<label for="fx">f(${ex.vx}) — use x como variable; funciones: sin cos tan sinh cosh sqrt exp ln abs pi, potencia con ^</label><input id="fx" spellcheck="false"><div class="row"><label for="a">a<input id="a"></label><label for="b">b<input id="b"></label><label for="n">n<input id="n" type="number" min="1" step="1"></label></div>`;
+  h+=`<label for="ref">Valor de referencia (opcional; admite expresiones como 8/3)</label><input id="ref">`;
+  h+=`<label for="m">Método para tabla de pesos y gráfico</label><select id="m">${M.map(m=>`<option value="${m.k}">${m.n}</option>`).join('')}</select>`;
+  if(ex.ser.length>1) h+=`<label for="s">Magnitud</label><select id="s">${ex.ser.map((s,i)=>`<option value="${i}">${s.l}</option>`).join('')}</select>`;
+  if(ex.note) h+=`<p class="note">${ex.note}</p>`;
+  $('#form').innerHTML=h;
+  ['data','fx','a','b','n','ref','m','s'].forEach(k=>{const el=$('#'+k);if(!el)return;el.value=st[k];
+    el.addEventListener('input',()=>{st[k]=el.value;out()})});
+}
+function out(){
+  const box=$('#out');let c;
+  try{c=calc(cur)}catch(e){box.innerHTML=`<h2>Resultados</h2><div class="err" role="alert">${e.message}</div>`;return}
+  const st=S[cur],sel=c.series[Math.min(st.s,c.series.length-1)],mk_=st.m;
+  let h=`<h2>Resultados</h2><div class="meta"><span>n = ${c.n}</span><span>h = ${F(c.h)}</span><span>Intervalo [${+c.a.toPrecision(10)}, ${+c.b.toPrecision(10)}]</span>${c.ref!=null?`<span>Referencia = ${F(c.ref)}</span>`:'<span>Sin referencia: no se puede calcular el error verdadero</span>'}</div>`;
+  c.series.forEach(sr=>{
+    const best=c.ref!=null?Math.min(...sr.res.filter(r=>r.val!=null).map(r=>r.ea)):null;
+    h+=`<h3>${sr.s.l}</h3><div class="sc"><table><tr><th>Método</th><th>Resultado (${sr.s.u})</th>${c.ex.conv?`<th>${c.ex.conv.u}</th>`:''}${c.ref!=null?'<th>Eₐ</th><th>E %</th>':''}</tr>`+
+    sr.res.map(r=>r.val==null?`<tr><td>${r.m.n}</td><td colspan="${1+(c.ex.conv?1:0)+(c.ref!=null?2:0)}" class="na">no aplicable: ${r.why} (n = ${c.n})</td></tr>`
+     :`<tr${r.ea!=null&&r.ea===best?' class="best"':''}><td>${r.m.n}</td><td>${F(r.val)}</td>${c.ex.conv?`<td>${F(r.val*c.ex.conv.k)}</td>`:''}${c.ref!=null?`<td>${F(r.ea)}</td><td>${r.ep==null?'—':r.ep.toFixed(6)}</td>`:''}</tr>`).join('')+'</table></div>';
+  });
+  const r=sel.res.find(r=>r.m.k==mk_);
+  h+=`<h3>Pesos de integración · ${M.find(m=>m.k==mk_).n}</h3>`;
+  if(!r||r.val==null) h+=`<p class="na">Método no aplicable con n = ${c.n}: ${r?r.why:''}.</p>`;
+  else{
+    const lim=Math.min(c.n+1,40);
+    h+=`<div class="sc"><table><tr><th>i</th><th>x</th><th>f</th><th>wᵢ/h</th><th>wᵢ·f</th></tr>`;
+    for(let i=0;i<lim;i++) h+=`<tr><td>${i}</td><td>${F(c.X[i])}</td><td>${F(sel.ys[i])}</td><td>${(r.w[i]/c.h).toFixed(4)}</td><td>${F(r.w[i]*sel.ys[i])}</td></tr>`;
+    if(lim<c.n+1) h+=`<tr><td colspan="5" class="na">… ${c.n+1-lim} filas más</td></tr>`;
+    h+=`<tr><td colspan="4"><b>Σ wᵢ·f</b> × factor ${sel.s.k!==1?(+sel.s.k.toPrecision(6)):1}</td><td><b>${F(r.val)}</b></td></tr></table></div>`;
+  }
+  h+=`<h3>Gráfico (${sel.s.u})</h3><canvas id="cv"></canvas>`;
+  box.innerHTML=h;draw(c,sel);
+}
+function draw(c,sel){
+  const cv=$('#cv'),dpr=devicePixelRatio||1,W=cv.clientWidth,H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
+  const g=cv.getContext('2d');g.scale(dpr,dpr);
+  const cs=getComputedStyle(document.documentElement),acc=cs.getPropertyValue('--acc').trim(),ink=cs.getPropertyValue('--mut').trim(),k=sel.s.k;
+  let curve=null;
+  if(c.f&&sel===c.series[0]){curve=[];for(let i=0;i<=200;i++){const x=c.a+(c.b-c.a)*i/200;curve.push([x,c.f(x)*k])}}
+  const ys=sel.ys.map(v=>v*k),all=ys.concat(curve?curve.map(p=>p[1]):[],0).filter(isFinite);
+  const y0=Math.min(...all),y1=Math.max(...all)||1,pad=34,sx=x=>pad+(x-c.a)/(c.b-c.a)*(W-pad-10),sy=y=>H-22-(y-y0)/((y1-y0)||1)*(H-34);
+  g.fillStyle=acc+'44';g.beginPath();g.moveTo(sx(c.X[0]),sy(0));c.X.forEach((x,i)=>g.lineTo(sx(x),sy(ys[i])));g.lineTo(sx(c.X[c.n]),sy(0));g.closePath();g.fill();
+  g.strokeStyle=ink;g.lineWidth=1;g.beginPath();g.moveTo(pad,sy(0));g.lineTo(W-10,sy(0));g.moveTo(pad,10);g.lineTo(pad,H-22);g.stroke();
+  g.strokeStyle=acc;g.lineWidth=2;g.beginPath();
+  (curve||c.X.map((x,i)=>[x,ys[i]])).forEach((p,i)=>i?g.lineTo(sx(p[0]),sy(p[1])):g.moveTo(sx(p[0]),sy(p[1])));g.stroke();
+  g.fillStyle=acc;if(c.n<=60)c.X.forEach((x,i)=>{g.beginPath();g.arc(sx(x),sy(ys[i]),3,0,7);g.fill()});
+  g.fillStyle=ink;g.font='11px system-ui';g.fillText(F(y1).replace(/\.?0+$/,''),2,14);g.fillText(+c.a.toPrecision(5),pad,H-6);g.fillText(+c.b.toPrecision(5),W-44,H-6);
+}
+addEventListener('resize',()=>{try{out()}catch(e){}});
+/* ---------- Validación f(x)=x² ---------- */
+function test(){
+  const rows=[4,6,8].map(n=>{const h=2/n,ys=Array.from({length:n+1},(_,i)=>(i*h)**2);return {n,res:integrate(ys,n,h)}});
+  let h='<table><tr><th>Método</th>'+rows.map(r=>`<th>n = ${r.n}</th><th>Eₐ</th>`).join('')+'</tr>';
+  M.slice(0,3).forEach((m,j)=>{h+=`<tr><td>${m.n}</td>`+rows.map(r=>{const x=r.res[j];return x.val==null?'<td class="na" colspan="2">no aplicable</td>':`<td>${F(x.val)}</td><td>${F(Math.abs(8/3-x.val))}</td>`}).join('')+'</tr>'});
+  $('#testout').innerHTML=h+'</table>';
+}
+/* ---------- Informe PDF ---------- */
+const A=s=>String(s).replace(/∫/g,'int').replace(/π/g,'pi').replace(/√/g,'sqrt').replace(/Σ/g,'suma').replace(/′/g,"'").replace(/ΔU/g,'DU').replace(/Eₐ/g,'Ea').replace(/−/g,'-').replace(/—/g,'-').replace(/≈/g,'~').replace(/·/g,'·').replace(/[^\x00-\xFF]/g,'');
+function concl(c){
+  const sr=c.series[0],v=sr.res.filter(r=>r.val!=null);
+  if(c.ref!=null){const b=v.reduce((p,q)=>q.ea<p.ea?q:p);return `Con la referencia ${F(c.ref)}, el menor error corresponde a ${b.m.n} (Ea = ${F(b.ea)}${b.ep!=null?', E% = '+b.ep.toFixed(6):''}). Con n = ${c.n} la discretizacion limita la exactitud, sobre todo si la funcion varia con rapidez.`}
+  const vals=v.map(r=>r.val);return `Sin valor de referencia no se puede calcular el error verdadero; los metodos aplicables difieren en ${F(Math.max(...vals)-Math.min(...vals))} (${sr.s.u}). Los resultados dependen de la calidad de los datos.`;
+}
+function pdf(){
+  if(!window.jspdf){alert('No se pudo cargar la librería jsPDF. Verifique su conexión a internet y recargue la página.');return}
+  const sel=[...document.querySelectorAll('#chk input:checked')].map(i=>i.value);
+  if(!sel.length){alert('Marque al menos un ejercicio.');return}
+  const d=new window.jspdf.jsPDF({unit:'mm',format:'a4'});let y=16;const L=14,Wd=182;
+  const need=h=>{if(y+h>284){d.addPage();y=16}};
+  const T=(t,sz=10,b=false,gap=1.6)=>{d.setFont('helvetica',b?'bold':'normal');d.setFontSize(sz);d.splitTextToSize(A(t),Wd).forEach(l=>{need(sz*.42+gap);d.text(l,L,y);y+=sz*.42+gap})};
+  T('Informe tecnico: Integracion numerica aplicada a La Paz, Bolivia',14,true,2.5);
+  T('Grupo: '+($('#grp').value||'-')+'   Integrantes: '+($('#mem').value||'-'),9);
+  y+=1;
+  sel.forEach(id=>{
+    const ex=EX[id];T('Ejercicio '+id+'. '+ex.t,11.5,true,2);
+    let c;try{c=calc(id)}catch(e){T('Datos invalidos: '+e.message,9);return}
+    T('Problema: '+ex.ctx,9);T('Modelo: '+ex.int,9);
+    if(ex.mode=='tabla'){T('Datos ('+ex.head+'): '+c.X.map((x,i)=>'('+x+'; '+c.Y[i]+')').join(' '),8)}
+    else T('f('+ex.vx+') = '+c.st.fx+';  intervalo ['+c.st.a+', '+c.st.b+']',9);
+    T('n = '+c.n+', h = '+F(c.h)+(c.ref!=null?', referencia = '+F(c.ref):', sin valor de referencia'),9);
+    c.series.forEach(sr=>{
+      if(c.series.length>1)T(sr.s.l+' ('+sr.s.u+')',9,true);
+      d.setFontSize(8.5);need(6);d.setFont('helvetica','bold');d.text('Metodo',L,y);d.text('Resultado ('+A(sr.s.u)+')',92,y);if(c.ref!=null){d.text('Ea',140,y);d.text('E %',168,y)}y+=4.2;d.setFont('helvetica','normal');
+      sr.res.forEach(r=>{need(4.5);d.text(A(r.m.n),L,y);
+        if(r.val==null)d.text('no aplicable ('+A(r.why)+')',92,y);
+        else{d.text(F(r.val)+(c.ex.conv?'  ['+F(r.val*c.ex.conv.k)+' '+c.ex.conv.u+']':''),92,y);if(c.ref!=null){d.text(F(r.ea),140,y);d.text(r.ep==null?'-':r.ep.toFixed(6),168,y)}}
+        y+=4.2});
+    });
+    T('Conclusion: '+concl(c),9,false,1.6);y+=3;
+  });
+  const n=4,h=.5,ys=Array.from({length:5},(_,i)=>(i*h)**2),s=integrate(ys,4,h)[1].val,s8=integrate(Array.from({length:9},(_,i)=>(i*.25)**2),8,.25)[1].val;
+  T('Verificacion del codigo: integral de x^2 en [0,2] (exacto 8/3 = 2.666667): Simpson 1/3 con n=4 da '+F(s)+' y con n=8 da '+F(s8)+'.',8.5);
+  T('Nota: escenarios adaptados con fines didacticos; los datos no son mediciones reales de Bolivia.',8);
+  d.save('informe_integracion_numerica.pdf');
+}
+/* ---------- Inicio ---------- */
+$('#chk').innerHTML=Object.keys(EX).map(i=>`<label><input type="checkbox" value="${i}" ${i<21?'checked':''}> Ej. ${i}</label>`).join('');
+$('#pdf').onclick=pdf;
+tabs();form();out();test();
+</script>
+</body>
+</html>
